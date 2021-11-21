@@ -12,4 +12,4 @@ pip install -r $SCRIPT_DIR/emotionmeter/requirements.txt
 # Download NLTK stopwords and Spacy corpus
 python -c "import nltk; nltk.download('stopwords')"
 python -m spacy download "en_core_web_lg"
-# python -m spacy download "en_core_web_sm"
+python -m spacy download "en_core_web_sm"
