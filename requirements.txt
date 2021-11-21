@@ -4,6 +4,7 @@ tqdm
 coloredlogs
 jupyter
 seaborn
+matplotlib
 # torch==1.10.0+cu113
 
 # PyTorch pip package
