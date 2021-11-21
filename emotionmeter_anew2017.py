@@ -194,17 +194,3 @@ class EmotionMeterANEW2017(EmotionMeter):
     def text_save_fix(text):
         # Line breaks have to be removed since they may cause compatible issues on calling read_csv()
         return text.replace('\n', ' ').replace('\r', '')
-
-
-if __name__ == '__main__':
-    # sample_text = 'RT @garywhite13: @SenBillNelson will join @RepDarrenSoto at town hall Thursday in Haines City to discuss civil rights, restoration of votin…'
-    meter_test = EmotionMeterANEW2017(data_path="data/tweets/ExtractedTweets.csv")
-    meter_test.load_data()
-    meter_test.load_lexicon()
-    # print(meter_test._calculate_score(sample_text))
-    meter_test.calculate_score()
-    # meter_test.calculate_num_token(meter_test.data_df)
-    # meter_test.detect_lang(meter_test.data_df)
-    # meter_test.detect_hashtag(meter_test.data_df)
-    # meter_test.detect_num_hashtag(meter_test.data_df)
-    meter_test.save_score(file_name_or_path='tweets_valence_arousal.csv')
