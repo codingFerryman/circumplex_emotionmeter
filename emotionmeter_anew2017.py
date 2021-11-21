@@ -1,7 +1,15 @@
+from utils import get_logger, set_seed
 from emotionmeter.emotionmeter import EmotionMeter
 import pandas as pd
 import string
 import numpy as np
+from pathlib import Path
+from tqdm import tqdm
+
+tqdm.pandas()
+
+logger = get_logger("emotionmeter_anew2017", True)
+set_seed()
 
 
 class EmotionText(object):
@@ -83,6 +91,7 @@ class EmotionMeterANEW2017(EmotionMeter):
         _data_df = pd.read_csv(_path)
         assert (text_column in _data_df.columns), f"df must have column {text_column}"
         self.data_df = _data_df
+        logger.debug('Data is loaded')
 
     def load_lexicon(self,
                      path=None,
@@ -108,6 +117,7 @@ class EmotionMeterANEW2017(EmotionMeter):
             kwargs['index_col'] = 0
 
         self.lexicon_df = pd.read_csv(_path, **kwargs)
+        logger.debug('Lexicon is loaded')
 
         rating_neutral = int(0.5 + rating_scale / 2)
         norm_max_rating = rating_scale - rating_neutral
@@ -115,6 +125,8 @@ class EmotionMeterANEW2017(EmotionMeter):
         self.lexicon_words = self.lexicon_df.index
         self.valence = (self.lexicon_df[valence_col] - rating_neutral) / norm_max_rating
         self.arousal = (self.lexicon_df[arousal_col] - rating_neutral) / norm_max_rating
+
+        logger.debug('Sources are normalized')
 
     def _calculate_score(self, text):
         # TODO: Take contrast connectives into account
@@ -167,15 +179,32 @@ class EmotionMeterANEW2017(EmotionMeter):
         return score
 
     def calculate_score(self):
-        _tmp_result = self.data_df[self.text_column].apply(self._calculate_score)
+        logger.info('Calculating scores ... ')
+        _tmp_result = self.data_df[self.text_column].progress_apply(self._calculate_score)
         self.result_df = pd.concat([self.data_df, _tmp_result.apply(pd.Series)], axis=1)
         return self.result_df
+
+    def save_score(self, file_name_or_path='valence_arousal.csv'):
+        _abs_path = Path(file_name_or_path).resolve()
+        self.result_df[self.text_column] = self.result_df[self.text_column].apply(self.text_save_fix)
+        self.result_df.to_csv(Path('.', file_name_or_path), index=False)
+        logger.info(f'Result is exported to {_abs_path}')
+
+    @staticmethod
+    def text_save_fix(text):
+        # Line breaks have to be removed since they may cause compatible issues on calling read_csv()
+        return text.replace('\n', ' ').replace('\r', '')
 
 
 if __name__ == '__main__':
     # sample_text = 'RT @garywhite13: @SenBillNelson will join @RepDarrenSoto at town hall Thursday in Haines City to discuss civil rights, restoration of votin…'
-    meter_test = EmotionMeterANEW2017()
+    meter_test = EmotionMeterANEW2017(data_path="data/tweets/ExtractedTweets.csv")
     meter_test.load_data()
     meter_test.load_lexicon()
     # print(meter_test._calculate_score(sample_text))
-    result = meter_test.calculate_score()
+    meter_test.calculate_score()
+    # meter_test.calculate_num_token(meter_test.data_df)
+    # meter_test.detect_lang(meter_test.data_df)
+    # meter_test.detect_hashtag(meter_test.data_df)
+    # meter_test.detect_num_hashtag(meter_test.data_df)
+    meter_test.save_score(file_name_or_path='tweets_valence_arousal.csv')

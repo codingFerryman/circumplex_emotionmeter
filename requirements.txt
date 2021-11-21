@@ -1,5 +1,9 @@
 GitPython
 numpy
+tqdm
+coloredlogs
+jupyter
+seaborn
 # torch==1.10.0+cu113
 
 # PyTorch pip package
