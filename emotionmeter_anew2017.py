@@ -1,4 +1,4 @@
-from utils import get_logger, set_seed
+from utils import get_logger
 from emotionmeter.emotionmeter import EmotionMeter
 import pandas as pd
 import string
@@ -9,8 +9,6 @@ from tqdm import tqdm
 tqdm.pandas()
 
 logger = get_logger("emotionmeter_anew2017", True)
-set_seed()
-
 
 class EmotionText(object):
     """
@@ -128,14 +126,13 @@ class EmotionMeterANEW2017(EmotionMeter):
 
         logger.debug('Sources are normalized')
 
-    def _calculate_score(self, text):
+    def calculate_score_text(self, text):
         # TODO: Take contrast connectives into account
         """
         Sum the valence and arousal sources of each word then calculate the average as the result
         :param text: text for processing
         :return: result
         """
-        assert (self.data_df is not None), "Please load the dataset first"
         assert (self.lexicon_df is not None), "Please load the lexicon file first"
 
         text = self.preprocess_text(text)
@@ -160,13 +157,13 @@ class EmotionMeterANEW2017(EmotionMeter):
                 elif a < 0:
                     arousal_neg_list.append(np.abs(a))
 
-        valence = sum(valence_list) / sum(valence_neg_list)
-        arousal = sum(arousal_list) / sum(arousal_neg_list)
+        valence_ratio = sum(valence_list) / sum(valence_neg_list)
+        arousal_ratio = sum(arousal_list) / sum(arousal_neg_list)
 
-        valence = self._rescale_score(valence)
-        arousal = self._rescale_score(arousal)
+        valence = self._rescale_score(valence_ratio)
+        arousal = self._rescale_score(arousal_ratio)
 
-        return {'valence': valence, 'arousal': arousal}
+        return {'valence': valence, 'arousal': arousal, 'valence_ratio': valence_ratio, 'arousal_ratio': arousal_ratio}
 
     @staticmethod
     def _rescale_score(score):
@@ -179,8 +176,9 @@ class EmotionMeterANEW2017(EmotionMeter):
         return score
 
     def calculate_score(self):
+        assert (self.data_df is not None), "Please load the dataset first"
         logger.info('Calculating scores ... ')
-        _tmp_result = self.data_df[self.text_column].progress_apply(self._calculate_score)
+        _tmp_result = self.data_df[self.text_column].progress_apply(self.calculate_score_text)
         self.result_df = pd.concat([self.data_df, _tmp_result.apply(pd.Series)], axis=1)
         return self.result_df
 
