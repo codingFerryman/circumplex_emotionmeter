@@ -2,3 +2,8 @@ This repository is for the project in the course [Building a Robot Judge: Data S
 
 This project is still in progress.
 
+
+
+## TODO
+- Take contrast connectives into account
+- Plot the results in circumplexes
