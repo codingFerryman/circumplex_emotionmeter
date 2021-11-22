@@ -27,5 +27,6 @@ Some results are visulized in [emotionmeter_anew2017_viz.ipynb](./emotionmeter_a
 
 ## TODO
 - Take contrast connectives into account
-- Plot the results in circumplexes
+- Plot the results in circumplexes (boxplots right now)
 - Analyze hashtags
+- Plot handle's results
