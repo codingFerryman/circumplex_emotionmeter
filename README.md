@@ -2,7 +2,7 @@ This repository is for the project in the course [Building a Robot Judge: Data S
 
 This project is still in progress.
 
-For both valence and arousal values, the maximum (positive) value is ```1```, the minimum (negative) value is ```-1```, the neutral value is ```0```.
+For both valence and arousal values, the maximum (positive) value is ```1```, the minimum (negative) value is ```-1```, and the neutral value is ```0```.
 
 ## Setup
 After cloning this repository, create or activate a virtual environment, then execute:
@@ -17,7 +17,7 @@ Analyze a single text:
 python main.py text=TEXT lexicon=PATH-TO-LEXICON-FILE
 ```
 
-Analyze a single text:
+Analyze a data file:
 ```python3
 python main.py data=PATH-TO-DATA-FILE lexicon=PATH-TO-LEXICON-FILE output=PATH-FOR-OUTPUT-FILE
 ```
