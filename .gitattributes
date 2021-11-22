@@ -1,0 +1,5 @@
+# Pickles
+*.pkl binary
+
+# Jupyter notebook
+*.ipynb linguist-documentation
