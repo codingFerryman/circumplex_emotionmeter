@@ -5,6 +5,10 @@ coloredlogs
 jupyter
 seaborn
 matplotlib
+us
+rtyaml
+inflect
+nltk
 # torch==1.10.0+cu113
 
 # PyTorch pip package

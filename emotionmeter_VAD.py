@@ -1,3 +1,6 @@
+import re
+
+from stopwords_loader import StopwordsLoader
 from utils import get_logger
 from emotionmeter.emotionmeter import EmotionMeter
 import pandas as pd
@@ -5,10 +8,13 @@ import string
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
+from nltk.tokenize import TweetTokenizer
+import preprocessor as p
 
 tqdm.pandas()
 
-logger = get_logger("emotionmeter_anew2017", True)
+logger = get_logger("circumplex_emotionmeter", True)
+
 
 class EmotionText(object):
     """
@@ -18,6 +24,7 @@ class EmotionText(object):
         "Vader: A parsimonious rule-based model for sentiment analysis of social media text."
         In Proceedings of the International AAAI Conference on Web and Social Media, vol. 8, no. 1. 2014.
     """
+
     def __init__(self, text):
         if not isinstance(text, str):
             text = str(text).encode('utf-8')
@@ -37,23 +44,33 @@ class EmotionText(object):
             return token
         return stripped
 
-    def _tokenize(self):
+    def _tokenize(self, nltk_tweet_tokenizer=True, **nltk_kwargs):
         """
-        Removes leading and trailing puncutation
-        Leaves contractions and most emoticons
-            Does not preserve punc-plus-letter emoticons (e.g. :D)
+        If nltk_tweet_tokenizer:
+            tokenize the sentence by TweetTokenizer from NLTK
+        Else:
+            Removes leading and trailing puncutation
+            Leaves contractions and most emoticons
+                Does not preserve punc-plus-letter emoticons (e.g. :D)
         """
-        wes = self.text.split()
-        stripped = list(map(self._strip_punc_if_word, wes))
-        return stripped
+        if nltk_tweet_tokenizer:
+            preserve_case = nltk_kwargs.get('preserve_case', False)
+            strip_handles = nltk_kwargs.get('strip_handles', True)
+            reduce_len = nltk_kwargs.get('reduce_len', True)
+            tokenizer = TweetTokenizer(preserve_case=preserve_case, strip_handles=strip_handles, reduce_len=reduce_len)
+            return tokenizer.tokenize(self.text)
+        else:
+            wes = self.text.split()
+            stripped = list(map(self._strip_punc_if_word, wes))
+            return stripped
 
 
-class EmotionMeterANEW2017(EmotionMeter):
+class CircumplexEmotionMeter(EmotionMeter):
     def __init__(self,
                  data_path: str = "data/tweets/smallExtractedTweets.csv",
                  text_column: str = "Tweet",
                  corpus: str = "en_core_web_lg",
-                 lexicon_path: str = "lexicon/anew2017/ANEW2017All.txt"
+                 lexicon_path: str = "lexicon/ANEW2017/ANEW2017All.txt"
                  ):
         """
         Initialize emotion meter
@@ -62,7 +79,7 @@ class EmotionMeterANEW2017(EmotionMeter):
         :param corpus: the name of Scapy corpus
         :param lexicon_path: the path of lexicon file
         """
-        super(EmotionMeterANEW2017, self).__init__(data_path, text_column, corpus)
+        super(CircumplexEmotionMeter, self).__init__(data_path, text_column, corpus)
 
         self.data_path = data_path
         self.data_df = None
@@ -96,6 +113,7 @@ class EmotionMeterANEW2017(EmotionMeter):
                      rating_scale=9,
                      valence_col='ValMn',
                      arousal_col='AroMn',
+                     dominance_col='DomMn',
                      **kwargs):
         """
         Import lexicon data
@@ -103,6 +121,7 @@ class EmotionMeterANEW2017(EmotionMeter):
         :param rating_scale: the number of rating points
         :param valence_col: the name of valence column
         :param arousal_col: the name of arousal column
+        :param dominance_col: the name of dominance column
         :param kwargs: parameters passed to pd.read_csv()
         :return:
         """
@@ -117,14 +136,38 @@ class EmotionMeterANEW2017(EmotionMeter):
         self.lexicon_df = pd.read_csv(_path, **kwargs)
         logger.debug('Lexicon is loaded')
 
-        rating_neutral = int(0.5 + rating_scale / 2)
-        norm_max_rating = rating_scale - rating_neutral
+        if rating_scale > 1:
+            rating_neutral = int(0.5 + rating_scale / 2)
+            norm_max_rating = rating_scale - rating_neutral
+        elif rating_scale == 1:
+            rating_neutral = 0.5
+            norm_max_rating = 0.5
+        else:
+            raise ValueError
 
         self.lexicon_words = self.lexicon_df.index
         self.valence = (self.lexicon_df[valence_col] - rating_neutral) / norm_max_rating
         self.arousal = (self.lexicon_df[arousal_col] - rating_neutral) / norm_max_rating
+        self.dominance = (self.lexicon_df[dominance_col] - rating_neutral) / norm_max_rating
 
         logger.debug('Sources are normalized')
+
+    @staticmethod
+    def preprocess_text(tweet, keep_hashtag_text: bool = False):
+        stopwords_cap = StopwordsLoader("legislators,areas").load()
+        stopwords_low = StopwordsLoader("nltk,numbers,procedural,calendar", lower=True).load()
+        # stopwords = list({*stopwords_cap, *stopwords_low})
+        if not keep_hashtag_text:
+            p.set_options(p.OPT.URL, p.OPT.EMOJI, p.OPT.MENTION, p.OPT.HASHTAG)
+        else:
+            p.set_options(p.OPT.URL, p.OPT.EMOJI, p.OPT.MENTION)
+
+        tweet = re.sub('#', '', p.clean(tweet))
+        tweet = re.sub(r"[^a-zA-Z\s]", "", tweet)
+        tweet = " ".join(word for word in tweet.split() if word not in stopwords_cap)
+        tweet = tweet.lower()
+        tweet = " ".join(word for word in tweet.split() if word not in stopwords_low)
+        return tweet
 
     def calculate_score_text(self, text):
         # TODO: Take contrast connectives into account
@@ -135,7 +178,6 @@ class EmotionMeterANEW2017(EmotionMeter):
         """
         assert (self.lexicon_df is not None), "Please load the lexicon file first"
 
-        text = self.preprocess_text(text)
         t = EmotionText(text)
         tokens = t.tokens
 
@@ -143,11 +185,14 @@ class EmotionMeterANEW2017(EmotionMeter):
         valence_neg_list = [1]
         arousal_list = [1]
         arousal_neg_list = [1]
+        dominance_list = [1]
+        dominance_neg_list = [1]
 
         for tk in tokens:
             if tk in self.lexicon_words:
                 v = self.valence[tk]
                 a = self.arousal[tk]
+                d = self.dominance[tk]
                 if v > 0:
                     valence_list.append(v)
                 elif v < 0:
@@ -156,14 +201,20 @@ class EmotionMeterANEW2017(EmotionMeter):
                     arousal_list.append(a)
                 elif a < 0:
                     arousal_neg_list.append(np.abs(a))
+                if d > 0:
+                    dominance_list.append(d)
+                elif d < 0:
+                    dominance_neg_list.append(np.abs(d))
 
         valence_ratio = sum(valence_list) / sum(valence_neg_list)
         arousal_ratio = sum(arousal_list) / sum(arousal_neg_list)
+        dominance_ratio = sum(dominance_list) / sum(dominance_neg_list)
 
         valence = self._rescale_score(valence_ratio)
         arousal = self._rescale_score(arousal_ratio)
+        dominance = self._rescale_score(dominance_ratio)
 
-        return {'valence': valence, 'arousal': arousal, 'valence_ratio': valence_ratio, 'arousal_ratio': arousal_ratio}
+        return {'valence': valence, 'arousal': arousal, 'dominance': dominance}
 
     @staticmethod
     def _rescale_score(score):
@@ -175,11 +226,13 @@ class EmotionMeterANEW2017(EmotionMeter):
             score = 0
         return score
 
-    def calculate_score(self):
-        assert (self.data_df is not None), "Please load the dataset first"
+    def calculate_score(self, data_df=None):
+        if data_df is None:
+            data_df = self.data_df
+        assert (data_df is not None), "Please load the dataset first"
         logger.info('Calculating scores ... ')
-        _tmp_result = self.data_df[self.text_column].progress_apply(self.calculate_score_text)
-        self.result_df = pd.concat([self.data_df, _tmp_result.apply(pd.Series)], axis=1)
+        _tmp_result = data_df[self.text_column].progress_apply(self.calculate_score_text)
+        self.result_df = pd.concat([data_df, _tmp_result.apply(pd.Series)], axis=1)
         return self.result_df
 
     def save_score(self, file_name_or_path='valence_arousal.csv'):
