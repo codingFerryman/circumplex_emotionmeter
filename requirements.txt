@@ -9,7 +9,5 @@ us
 rtyaml
 inflect
 nltk
-# torch==1.10.0+cu113
-
-# PyTorch pip package
-# --find-links https://download.pytorch.org/whl/torch_stable.html
+preprocessor
+pandarallel

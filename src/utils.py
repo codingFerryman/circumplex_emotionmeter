@@ -6,6 +6,7 @@ import logging
 import coloredlogs
 import rtyaml
 
+
 def set_seed(seed: int = 2021):
     """
     Helper function for reproducible behavior to set the seed in ``random``, ``numpy``, ``torch``
@@ -28,7 +29,7 @@ def get_project_path() -> Path:
 
 
 def get_data_path() -> Path:
-    return Path(get_project_path(), 'data')
+    return Path(get_project_path(), '../data')
 
 
 def get_logger(name: str, debug=False):
@@ -60,12 +61,12 @@ def yaml_load(path, use_cache=True):
             if store["hash"] == h:
                 return store["data"]
         except EOFError:
-            pass # bad .pickle file, pretend it doesn't exist
+            pass  # bad .pickle file, pretend it doesn't exist
 
     # No cached pickled data exists, so load the YAML file.
     data = rtyaml.load(open(path))
 
     # Store in a pickled file for fast access later.
-    pickle.dump({ "hash": h, "data": data }, open(path+".pickle", "wb"))
+    pickle.dump({"hash": h, "data": data}, open(path + ".pickle", "wb"))
 
     return data

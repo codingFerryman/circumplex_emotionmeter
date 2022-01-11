@@ -1,5 +1,7 @@
 import re
 
+import spacy
+
 from stopwords_loader import StopwordsLoader
 from utils import get_logger
 from emotionmeter.emotionmeter import EmotionMeter
@@ -10,6 +12,9 @@ from pathlib import Path
 from tqdm import tqdm
 from nltk.tokenize import TweetTokenizer
 import preprocessor as p
+from pandarallel import pandarallel
+
+pandarallel.initialize()
 
 tqdm.pandas()
 
@@ -70,8 +75,8 @@ class CircumplexEmotionMeter(EmotionMeter):
                  data_path: str = "data/tweets/smallExtractedTweets.csv",
                  text_column: str = "Tweet",
                  corpus: str = "en_core_web_lg",
-                 lexicon_path: str = "lexicon/ANEW2017/ANEW2017All.txt"
-                 ):
+                 lexicon_path: str = "lexicon/ANEW2017/ANEW2017All.txt",
+                 **kwargs):
         """
         Initialize emotion meter
         :param data_path: the path of dataset
@@ -79,7 +84,7 @@ class CircumplexEmotionMeter(EmotionMeter):
         :param corpus: the name of Scapy corpus
         :param lexicon_path: the path of lexicon file
         """
-        super(CircumplexEmotionMeter, self).__init__(data_path, text_column, corpus)
+        super(CircumplexEmotionMeter, self).__init__(data_path, text_column, corpus, **kwargs)
 
         self.data_path = data_path
         self.data_df = None
@@ -88,9 +93,6 @@ class CircumplexEmotionMeter(EmotionMeter):
         self.lexicon_df = None
 
         self.result_df = None
-
-    def load_cognition_and_cognition_word_lists(self):
-        pass
 
     def load_data(self, path=None, text_column: str = "Tweet"):
         """
@@ -110,7 +112,6 @@ class CircumplexEmotionMeter(EmotionMeter):
 
     def load_lexicon(self,
                      path=None,
-                     rating_scale=9,
                      valence_col='ValMn',
                      arousal_col='AroMn',
                      dominance_col='DomMn',
@@ -132,7 +133,14 @@ class CircumplexEmotionMeter(EmotionMeter):
         if 'ANEW2017' in _path:
             kwargs['sep'] = '\t'
             kwargs['index_col'] = 0
-
+            rating_scale = 9
+        elif 'NRC' in _path:
+            kwargs['sep'] = '\t'
+            kwargs['index_col'] = 0
+            kwargs['names'] = ['Word', 'ValMn', 'AroMn', 'DomMn']
+            rating_scale = 1
+        else:
+            raise FileNotFoundError
         self.lexicon_df = pd.read_csv(_path, **kwargs)
         logger.debug('Lexicon is loaded')
 
@@ -214,7 +222,16 @@ class CircumplexEmotionMeter(EmotionMeter):
         arousal = self._rescale_score(arousal_ratio)
         dominance = self._rescale_score(dominance_ratio)
 
-        return {'valence': valence, 'arousal': arousal, 'dominance': dominance}
+        nlp = spacy.load("en_core_web_lg")
+        nlp_cognition = nlp(' '.join(self.cog))
+        cognition_score = nlp_cognition.similarity(nlp(" ".join(tokens)))
+
+        valence_rate = (valence + 1) / (cognition_score + 1)
+        arousal_rate = (arousal + 1) / (cognition_score + 1)
+        dominance_rate = (dominance + 1) / (cognition_score + 1)
+
+        return {'valence': valence, 'arousal': arousal, 'dominance': dominance,
+                'valence_rate': valence_rate, 'arousal_rate': arousal_rate, 'dominance_rate': dominance_rate}
 
     @staticmethod
     def _rescale_score(score):
@@ -238,7 +255,7 @@ class CircumplexEmotionMeter(EmotionMeter):
     def save_score(self, file_name_or_path='valence_arousal.csv'):
         _abs_path = Path(file_name_or_path).resolve()
         self.result_df[self.text_column] = self.result_df[self.text_column].apply(self.text_save_fix)
-        self.result_df.to_csv(Path('.', file_name_or_path), index=False)
+        self.result_df.to_csv(Path('..', file_name_or_path), index=False)
         logger.info(f'Result is exported to {_abs_path}')
 
     @staticmethod

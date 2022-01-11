@@ -21,7 +21,7 @@ def load_nltk_stopwords():
 
 def load_areas():
     """Load the name of the cities, states, and counties in the United States"""
-    with open('./USA-cities-and-states/us_cities_states_counties.csv', 'r') as fp:
+    with open('../USA-cities-and-states/us_cities_states_counties.csv', 'r') as fp:
         us_areas_file = fp.read()
     us_areas = list(
         set(re.split('[\n|]', us_areas_file.lower())) - {'city', 'state short', 'state full', 'county', 'city alias',
