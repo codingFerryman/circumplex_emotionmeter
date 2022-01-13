@@ -16,9 +16,9 @@ from tqdm import tqdm
 from nltk.tokenize import TweetTokenizer
 import preprocessor as p
 
-# from pandarallel import pandarallel
+from pandarallel import pandarallel
 
-# pandarallel.initialize()
+pandarallel.initialize()
 
 tqdm.pandas()
 
@@ -264,7 +264,9 @@ class CircumplexEmotionMeter(EmotionMeter):
             data_df = self.data_df
         assert (data_df is not None), "Please load the dataset first"
         logger.info('Calculating scores ... ')
-        self.result_df = parallelize_dataframe(data_df, self.apply_calculation_row)
+        _tmp_result = data_df[self.text_column].progress_apply(self.calculate_score_text)
+        self.result_df = pd.concat([data_df, _tmp_result.apply(pd.Series)], axis=1)
+        # self.result_df = parallelize_dataframe(data_df, self.apply_calculation_row)
         return self.result_df
 
     def save_score(self, file_name_or_path='valence_arousal.csv'):
