@@ -1,9 +1,11 @@
 import random
+from multiprocessing import Pool
 from pathlib import Path
 import numpy as np
 # import torch
 import logging
 import coloredlogs
+import pandas as pd
 import rtyaml
 
 
@@ -18,6 +20,14 @@ def set_seed(seed: int = 2021):
     # torch.manual_seed(seed)
     # torch.cuda.manual_seed_all(seed)
 
+
+def parallelize_dataframe(df, func, n_cores=10):
+    df_split = np.array_split(df, n_cores)
+    pool = Pool(n_cores)
+    df = pd.concat(pool.map(func, df_split))
+    pool.close()
+    pool.join()
+    return df
 
 def get_project_path() -> Path:
     """The function for getting the root directory of the project"""

@@ -1,9 +1,12 @@
+import nltk
+from typing import Union, List, Set
+
 import re
 
 import spacy
 
 from stopwords_loader import StopwordsLoader
-from utils import get_logger
+from utils import get_logger, parallelize_dataframe
 from emotionmeter.emotionmeter import EmotionMeter
 import pandas as pd
 import string
@@ -12,9 +15,10 @@ from pathlib import Path
 from tqdm import tqdm
 from nltk.tokenize import TweetTokenizer
 import preprocessor as p
-from pandarallel import pandarallel
 
-pandarallel.initialize()
+# from pandarallel import pandarallel
+
+# pandarallel.initialize()
 
 tqdm.pandas()
 
@@ -30,26 +34,24 @@ class EmotionText(object):
         In Proceedings of the International AAAI Conference on Web and Social Media, vol. 8, no. 1. 2014.
     """
 
-    def __init__(self, text):
+    def __init__(self,
+                 text,
+                 tokenizer,
+                 stopwords: Union[List, Set, re.Pattern] = None,
+                 stopwords_cap: Union[List, Set, re.Pattern] = None):
         if not isinstance(text, str):
             text = str(text).encode('utf-8')
         self.text = text
-        self.tokens = self._tokenize()
+        # if not (type(stopwords) is re.Pattern and type(stopwords_cap) is re.Pattern):
+        #     raise NotImplementedError
+        # else:
+        #     self.stopwords = stopwords
+        #     self.stopwords_cap = stopwords_cap
+        self.stopwords = stopwords
+        self.stopwords_cap = stopwords_cap
+        self.tokens, self.hashtags, self.mentions = self._tokenize(tokenizer)
 
-    @staticmethod
-    def _strip_punc_if_word(token):
-        """
-        Removes all trailing and leading punctuation
-        If the resulting string has two or fewer characters,
-        then it was likely an emoticon, so return original string
-        (ie ":)" stripped would be "", so just return ":)"
-        """
-        stripped = token.strip(string.punctuation)
-        if len(stripped) <= 2:
-            return token
-        return stripped
-
-    def _tokenize(self, nltk_tweet_tokenizer=True, **nltk_kwargs):
+    def _tokenize(self, tokenizer):
         """
         If nltk_tweet_tokenizer:
             tokenize the sentence by TweetTokenizer from NLTK
@@ -58,16 +60,14 @@ class EmotionText(object):
             Leaves contractions and most emoticons
                 Does not preserve punc-plus-letter emoticons (e.g. :D)
         """
-        if nltk_tweet_tokenizer:
-            preserve_case = nltk_kwargs.get('preserve_case', False)
-            strip_handles = nltk_kwargs.get('strip_handles', True)
-            reduce_len = nltk_kwargs.get('reduce_len', True)
-            tokenizer = TweetTokenizer(preserve_case=preserve_case, strip_handles=strip_handles, reduce_len=reduce_len)
-            return tokenizer.tokenize(self.text)
-        else:
-            wes = self.text.split()
-            stripped = list(map(self._strip_punc_if_word, wes))
-            return stripped
+
+        _tokens = tokenizer.tokenize(self.text)
+        _hashtags = [_t for _t in _tokens if _t[0] == '#']
+        _mentions = [_t for _t in _tokens if _t[0] == '@']
+        _tokens = [_t.lower() for _t in _tokens if _t not in self.stopwords_cap.union(set(_hashtags+_mentions))]
+        _tokens = [_t for _t in _tokens if _t not in self.stopwords and not _t.startswith('http')]
+
+        return _tokens, _hashtags, _mentions
 
 
 class CircumplexEmotionMeter(EmotionMeter):
@@ -76,6 +76,7 @@ class CircumplexEmotionMeter(EmotionMeter):
                  text_column: str = "Tweet",
                  corpus: str = "en_core_web_lg",
                  lexicon_path: str = "lexicon/ANEW2017/ANEW2017All.txt",
+                 cognition_path="../emotionmeter/word_lists/cognition_list.txt",
                  **kwargs):
         """
         Initialize emotion meter
@@ -84,13 +85,18 @@ class CircumplexEmotionMeter(EmotionMeter):
         :param corpus: the name of Scapy corpus
         :param lexicon_path: the path of lexicon file
         """
-        super(CircumplexEmotionMeter, self).__init__(data_path, text_column, corpus, **kwargs)
+        super(CircumplexEmotionMeter, self).__init__(
+            data_path, text_column, corpus,
+            cognition_path=cognition_path,
+            **kwargs)
 
         self.data_path = data_path
         self.data_df = None
 
         self.lexicon_path = lexicon_path
         self.lexicon_df = None
+
+        self.tokenizer = None
 
         self.result_df = None
 
@@ -109,6 +115,11 @@ class CircumplexEmotionMeter(EmotionMeter):
         assert (text_column in _data_df.columns), f"df must have column {text_column}"
         self.data_df = _data_df
         logger.debug('Data is loaded')
+
+    def load_cognition_and_cognition_word_lists(self):
+        with open(self.cognition_path, "r") as f:
+            cognition_list = f.readlines()
+        self.cog = [word.strip() for word in cognition_list]
 
     def load_lexicon(self,
                      path=None,
@@ -158,36 +169,35 @@ class CircumplexEmotionMeter(EmotionMeter):
         self.arousal = (self.lexicon_df[arousal_col] - rating_neutral) / norm_max_rating
         self.dominance = (self.lexicon_df[dominance_col] - rating_neutral) / norm_max_rating
 
-        logger.debug('Sources are normalized')
+        logger.debug('Scores are normalized to [-1, 1]')
 
-    @staticmethod
-    def preprocess_text(tweet, keep_hashtag_text: bool = False):
-        stopwords_cap = StopwordsLoader("legislators,areas").load()
-        stopwords_low = StopwordsLoader("nltk,numbers,procedural,calendar", lower=True).load()
-        # stopwords = list({*stopwords_cap, *stopwords_low})
-        if not keep_hashtag_text:
-            p.set_options(p.OPT.URL, p.OPT.EMOJI, p.OPT.MENTION, p.OPT.HASHTAG)
+    def load_stopwords(self):
+        self.stopwords_cap = StopwordsLoader("areas").load()
+        # self.stopwords_cap = StopwordsLoader("legislators,areas").load()
+        logger.debug("Loading stopwords: legislators,areas")
+        self.stopwords = StopwordsLoader("nltk,numbers,procedural,calendar", lower=True).load()
+        logger.debug("Loading stopwords: nltk,numbers,procedural,calendar")
+
+    def load_tokenizer(self, tokenizer=None, **kwargs):
+        if tokenizer is None:
+            self.tokenizer = nltk.ToktokTokenizer()
         else:
-            p.set_options(p.OPT.URL, p.OPT.EMOJI, p.OPT.MENTION)
-
-        tweet = re.sub('#', '', p.clean(tweet))
-        tweet = re.sub(r"[^a-zA-Z\s]", "", tweet)
-        tweet = " ".join(word for word in tweet.split() if word not in stopwords_cap)
-        tweet = tweet.lower()
-        tweet = " ".join(word for word in tweet.split() if word not in stopwords_low)
-        return tweet
+            self.tokenizer = tokenizer(kwargs)
 
     def calculate_score_text(self, text):
-        # TODO: Take contrast connectives into account
         """
         Sum the valence and arousal sources of each word then calculate the average as the result
         :param text: text for processing
         :return: result
         """
         assert (self.lexicon_df is not None), "Please load the lexicon file first"
+        assert (self.tokenizer is not None), "Please load a tokenizer first"
 
-        t = EmotionText(text)
-        tokens = t.tokens
+        t = EmotionText(text, self.tokenizer, self.stopwords, self.stopwords_cap)
+        tokens, hashtags, mentions = t.tokens, t.hashtags, t.mentions
+        if len(tokens) == 0:
+            logger.debug('Empty string, return None')
+            return
 
         valence_list = [1]
         valence_neg_list = [1]
@@ -231,7 +241,13 @@ class CircumplexEmotionMeter(EmotionMeter):
         dominance_rate = (dominance + 1) / (cognition_score + 1)
 
         return {'valence': valence, 'arousal': arousal, 'dominance': dominance,
-                'valence_rate': valence_rate, 'arousal_rate': arousal_rate, 'dominance_rate': dominance_rate}
+                'valence_rate': valence_rate, 'arousal_rate': arousal_rate, 'dominance_rate': dominance_rate,
+                'hashtags': hashtags, 'mentions': mentions}
+
+    def apply_calculation_row(self, df):
+        _results = df[self.text_column].apply(self.calculate_score_text)
+        return pd.concat([df, _results.apply(pd.Series)], axis=1)
+
 
     @staticmethod
     def _rescale_score(score):
@@ -248,8 +264,7 @@ class CircumplexEmotionMeter(EmotionMeter):
             data_df = self.data_df
         assert (data_df is not None), "Please load the dataset first"
         logger.info('Calculating scores ... ')
-        _tmp_result = data_df[self.text_column].progress_apply(self.calculate_score_text)
-        self.result_df = pd.concat([data_df, _tmp_result.apply(pd.Series)], axis=1)
+        self.result_df = parallelize_dataframe(data_df, self.apply_calculation_row)
         return self.result_df
 
     def save_score(self, file_name_or_path='valence_arousal.csv'):

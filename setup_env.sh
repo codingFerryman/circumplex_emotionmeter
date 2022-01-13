@@ -3,8 +3,9 @@
 # Specify the project path
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 
-# Pull submodules
+# Pull and update submodules
 git submodule update --init --recursive
+git submodule update --remote --merge
 
 # Upgrade the building tools
 pip install --upgrade pip setuptools wheel

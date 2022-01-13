@@ -8,15 +8,15 @@ set_seed(2021)
 
 
 def launch(data_path, lexicon_path, output_path, **lexicon_kwargs):
-    meter_test = CircumplexEmotionMeter(data_path=data_path,
-                                        lexicon_path=lexicon_path,
-                                        affection_path="../emotionmeter/word_lists/affect_list.txt",
-                                        cognition_path="../emotionmeter/word_lists/cognition_list.txt"
-                                        )
+    meter_test = CircumplexEmotionMeter(
+        data_path=data_path,
+        lexicon_path=lexicon_path
+    )
     meter_test.load_data()
     meter_test.load_lexicon(**lexicon_kwargs)
     meter_test.load_cognition_and_cognition_word_lists()
-    # print(meter_test._calculate_score(sample_text))
+    meter_test.load_stopwords()
+    meter_test.load_tokenizer()
     logger.debug('Executing calculate_score()')
     meter_test.calculate_score()
     # logger.debug('Executing calculate_num_token()')
@@ -40,10 +40,10 @@ def main(args: List[str]):
     argv = {a.split('=')[0]: a.split('=')[1] for a in args[1:]}
     default_data_path = "../data/tweets/ExtractedTweets.csv"
 
-    # default_lexicon_path = "lexicon/ANEW2017/ANEW2017All.txt"
-    # default_output_path = "output_anew.csv"
-    default_lexicon_path = "../lexicon/NRC-VAD-Lexicon-Aug2018Release/NRC-VAD-Lexicon.txt"
-    default_output_path = "../output_nrc.csv"
+    default_lexicon_path = "../lexicon/ANEW2017/ANEW2017All.txt"
+    default_output_path = "../output_anew.csv"
+    # default_lexicon_path = "../lexicon/NRC-VAD-Lexicon-Aug2018Release/NRC-VAD-Lexicon.txt"
+    # default_output_path = "../output_nrc.csv"
 
     text = argv.get('text', None)
     data_path = argv.get('data', default_data_path)
