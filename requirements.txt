@@ -2,7 +2,6 @@ GitPython
 numpy
 tqdm
 coloredlogs
-jupyter
 seaborn
 matplotlib
 us
@@ -11,4 +10,3 @@ inflect
 nltk
 pandas
 spacy
-PyYAML
