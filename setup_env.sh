@@ -11,7 +11,7 @@ git submodule update --remote --merge
 pip install --upgrade pip setuptools wheel
 
 # Install the requirements
-pip install -r $SCRIPT_DIR/emotionmeter/requirements.txt
+# pip install -r $SCRIPT_DIR/emotionmeter/requirements.txt
 pip install -r $SCRIPT_DIR/requirements.txt
 
 # Download NLTK stopwords and Spacy corpus

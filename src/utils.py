@@ -1,12 +1,13 @@
-import random
 from multiprocessing import Pool
-from pathlib import Path
-import numpy as np
-# import torch
-import logging
+
 import coloredlogs
+import logging
+import multiprocessing
+import numpy as np
 import pandas as pd
+import random
 import rtyaml
+from pathlib import Path
 
 
 def set_seed(seed: int = 2021):
@@ -21,7 +22,7 @@ def set_seed(seed: int = 2021):
     # torch.cuda.manual_seed_all(seed)
 
 
-def parallelize_dataframe(df, func, n_cores=10):
+def parallelize_dataframe(df, func, n_cores=multiprocessing.cpu_count() - 1):
     df_split = np.array_split(df, n_cores)
     pool = Pool(n_cores)
     df = pd.concat(pool.map(func, df_split))

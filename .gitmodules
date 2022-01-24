@@ -1,6 +1,3 @@
-[submodule "emotionmeter"]
-	path = emotionmeter
-	url = https://github.com/elliottash/emotionmeter.git
 [submodule "USA-cities-and-states"]
 	path = USA-cities-and-states
 	url = https://github.com/grammakov/USA-cities-and-states.git

@@ -1,13 +1,11 @@
 # Load the name of the cities, states, and counties in the United States
 import calendar
+import inflect
 import re
 import string
-
-import inflect
 import yaml
-from yaml import Loader
 from nltk.corpus import stopwords
-from utils import yaml_load
+from yaml import Loader
 
 
 def load_procedural_words():
