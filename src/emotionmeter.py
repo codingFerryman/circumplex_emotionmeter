@@ -1,6 +1,5 @@
 import nltk
 import numpy as np
-# from emotionmeter.emotionmeter import EmotionMeter
 import pandas as pd
 import re
 import spacy
@@ -11,9 +10,6 @@ from typing import Union, List, Set
 
 from stopwords_loader import StopwordsLoader
 from utils import get_logger
-
-# from tqdm.contrib.concurrent import process_map
-
 
 logger = get_logger("circumplex_emotionmeter", True)
 
@@ -84,10 +80,9 @@ class CircumplexEmotionMeter():
                  text_column: str = "Tweet",
                  corpus: str = "en_core_web_lg",
                  lexicon_path: str = "lexicon/ANEW2017/ANEW2017All.txt",
-                 # affection_path="../emotionmeter/word_lists/affect_list.txt",  # dummy argument
                  cognition_path="../lexicon/cognition_list.txt",
-                 use_tqdm=False,
-                 **kwargs):
+                 use_tqdm=False
+                 ):
         """
         Initialize emotion meter
         :param data_path: the path of dataset
@@ -95,14 +90,9 @@ class CircumplexEmotionMeter():
         :param corpus: the name of Scapy corpus
         :param lexicon_path: the path of lexicon file
         """
-        # super(CircumplexEmotionMeter, self).__init__(
-        #     data_path_or_df, text_column,
-        #     corpus="en_core_web_lg",
-        #     affection_path=affection_path,  # dummy argument
-        #     cognition_path=cognition_path)
 
         self.text_column = text_column
-        # self.affection_path = affection_path
+
         self.cognition_path = cognition_path
 
         self.load_cognition_and_cognition_word_lists()
@@ -123,9 +113,6 @@ class CircumplexEmotionMeter():
         self.use_tqdm = use_tqdm
 
     def load_cognition_and_cognition_word_lists(self):
-        # with open(self.affection_path, "r") as f:
-        #     affect_list = f.readlines()
-        # self.aff = [word.strip() for word in affect_list]
         with open(self.cognition_path, "r") as f:
             cognition_list = f.readlines()
         self.cog = [word.strip() for word in cognition_list]

@@ -3,10 +3,9 @@ from multiprocessing import Pool
 import numpy as np
 import os
 import pandas as pd
-import sys
 from pathlib import Path
 
-from emotionmeter_VAD import CircumplexEmotionMeter
+from emotionmeter import CircumplexEmotionMeter
 from utils import get_logger, set_seed
 
 logger = get_logger('main', True)
@@ -114,13 +113,14 @@ def main(args):
         launch(data_path, lexicon_path, output_path, text_column=text_column, use_tqdm=True)
         exit(0)
 
-if __name__ == "__main__":
-    main(sys.argv)
-    # default_data_path = "../data/tweets/ExtractedTweets.csv"
 
-    # # default_lexicon_path = "../lexicon/ANEW2017/ANEW2017All.txt"
-    # # default_output_path = "../output_anew.csv"
-    # # launch(default_data_path, default_lexicon_path, default_output_path, use_tqdm=True)
+if __name__ == "__main__":
+    # main(sys.argv)
+    default_data_path = "../data/tweets/ExtractedTweets.csv"
+
+    default_lexicon_path = "../lexicon/ANEW2017/ANEW2017All.txt"
+    default_output_path = "../output_anew.csv"
+    launch(default_data_path, default_lexicon_path, default_output_path, use_tqdm=True)
 
     # default_lexicon_path = "../lexicon/NRC-VAD-Lexicon-Aug2018Release/NRC-VAD-Lexicon.txt"
     # default_output_path = "../output_nrc.csv"

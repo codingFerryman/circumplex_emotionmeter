@@ -23,7 +23,7 @@ python main.py data=PATH-TO-DATA-FILE lexicon=PATH-TO-LEXICON-FILE output=PATH-F
 ```
 
 ## Results
-Some results are visulized in [emotionmeter_anew2017_viz.ipynb](src/emotionmeter_VAD_viz.ipynb)
+Some results are visulized in [emotionmeter_anew2017_viz.ipynb](src/visualization.ipynb)
 
 ## TODO
 - Take contrast connectives into account
