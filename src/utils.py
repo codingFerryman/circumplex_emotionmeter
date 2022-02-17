@@ -1,13 +1,20 @@
-from multiprocessing import Pool
-
 import coloredlogs
 import logging
-import multiprocessing
 import numpy as np
-import pandas as pd
 import random
 import rtyaml
 from pathlib import Path
+from tqdm.auto import tqdm
+
+
+def apply_calculation_rows(df, func, use_tqdm, **kwargs):
+    results = []
+    df_dict_list = df.to_dict('records')
+    if use_tqdm:
+        df_dict_list = tqdm(df_dict_list)
+    for _r in df_dict_list:
+        results.append(func(_r, **kwargs))
+    return results
 
 
 def set_seed(seed: int = 2021):
@@ -18,17 +25,7 @@ def set_seed(seed: int = 2021):
     """
     random.seed(seed)
     np.random.seed(seed)
-    # torch.manual_seed(seed)
-    # torch.cuda.manual_seed_all(seed)
 
-
-def parallelize_dataframe(df, func, n_cores=multiprocessing.cpu_count() - 1):
-    df_split = np.array_split(df, n_cores)
-    pool = Pool(n_cores)
-    df = pd.concat(pool.map(func, df_split))
-    pool.close()
-    pool.join()
-    return df
 
 def get_project_path() -> Path:
     """The function for getting the root directory of the project"""
