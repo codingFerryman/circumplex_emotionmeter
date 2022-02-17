@@ -7,6 +7,8 @@ from typing import Optional, Union, List, Set
 import nltk
 import pandas as pd
 import requests
+from spacy.cli.init_pipeline import init_vectors_cli
+
 from stopwords_loader import StopwordsLoader
 from utils import get_logger, apply_calculation_rows
 from gensim.models import Word2Vec
@@ -87,6 +89,15 @@ class EmotionText(object):
         _tokens = [_t for _t in _tokens if len(_t) > 0]
 
         return _tokens, _hashtags, _mentions, _rt
+
+
+def convert2spacy(gensim_vector_path, save_dir):
+    logger.info(f"Converting the Gensim Word2Vec model from {gensim_vector_path} to Spacy model ...")
+    init_vectors_cli(lang='en',
+                     vectors_loc=Path(gensim_vector_path),
+                     output_dir=Path(save_dir),
+                     prune=-1, truncate=0, mode='default', name=None, verbose=False, jsonl_loc=None)
+    logger.info(f"Converted successfully! Please load the Spacy model from {save_dir}")
 
 
 class CircumplexEmotionMeterPreprocessor:
@@ -190,7 +201,7 @@ class CircumplexEmotionMeterPreprocessor:
         self.result_df = pd.read_pickle(load_path)
         return self.result_df
 
-    def save_word2vec(self, save_path="./w2v.kv"):
+    def save_word2vec(self, save_path="./w2v.txt"):
         cores = multiprocessing.cpu_count()
 
         assert self.result_df is not None
@@ -198,7 +209,7 @@ class CircumplexEmotionMeterPreprocessor:
         logger.info("Training Word2Vec ...")
         model = Word2Vec(sentences=tokens, vector_size=300, window=8, epochs=100, workers=cores - 1)
         model_vectors = model.wv
-        model_vectors.save(save_path)
+        model_vectors.save_word2vec_format(save_path)
         logger.info(f"The KeyedVector in Word2Vec is saved to {save_path}")
         return model
 
@@ -215,14 +226,19 @@ class CircumplexEmotionMeterPreprocessor:
 
 
 def execute_preprocessor(
-        token_path='../tokens.pkl',
-        w2v_path='../w2v.kv',
+        token_path='./cache/tokens.pkl',
+        w2v_path='./cache/w2v.kv',
+        spacy_save_path='./cache/w2v',
         **kwargs
 ):
+    for p in [token_path, w2v_path, spacy_save_path]:
+        Path(p).parent.mkdir(parents=True, exist_ok=True)
+
     proc = CircumplexEmotionMeterPreprocessor(**kwargs)
     if not Path(token_path).is_file():
         lang_id_model_path = kwargs.get('lang_id_model_path', None)
         if lang_id_model_path is not None:
+            Path(lang_id_model_path).parent.mkdir(parents=True, exist_ok=True)
             if not Path(lang_id_model_path).is_file():
                 model_url = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
                 r = requests.get(model_url, allow_redirects=True)
@@ -232,15 +248,21 @@ def execute_preprocessor(
         proc.load_data()
         proc.preprocess()
         proc.save_tokens(token_path)
+    logger.info(f"Loading tokens from {token_path} ...")
     _ = proc.load_tokens(token_path)
     proc.save_word2vec(w2v_path)
+    convert2spacy(
+        gensim_vector_path=w2v_path,
+        save_dir=spacy_save_path
+    )
 
 
 if __name__ == '__main__':
     configurations = [
         {
-            "token_path": '../tokens.pkl',
-            "w2v_path": '../w2v.kv',
+            "token_path": './cache/tokens.pkl',
+            "w2v_path": './cache/w2v.txt',
+            "spacy_save_path": './cache/w2v',
             "args": {
                 "data_path_or_df": '../data/tweets/ExtractedTweets.csv',
                 "text_column": 'Tweet',
@@ -248,8 +270,9 @@ if __name__ == '__main__':
             }
         },
         {
-            "token_path": '../tokens_trump.pkl',
-            "w2v_path": '../w2v_trump.kv',
+            "token_path": './cache/tokens_trump.pkl',
+            "w2v_path": './cache/w2v_trump.txt',
+            "spacy_save_path": './cache/w2v_trump',
             "args": {
                 "data_path_or_df": '../data/tweets/trump_archive.csv',
                 "text_column": 'doc',
@@ -262,5 +285,6 @@ if __name__ == '__main__':
         execute_preprocessor(
             token_path=cfg["token_path"],
             w2v_path=cfg["w2v_path"],
+            spacy_save_path=cfg["spacy_save_path"],
             **cfg["args"]
         )
