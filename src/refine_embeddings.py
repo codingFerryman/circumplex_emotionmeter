@@ -1,3 +1,12 @@
+"""
+Please be aware that the code here is still experimental
+
+Reference:
+# https://aclanthology.org/D17-1056.pdf
+# https://github.com/wangjin0818/word_embedding_refine/blob/master/embedding_refine.py
+
+"""
+
 import codecs
 
 import pandas as pd
@@ -5,10 +14,10 @@ import numpy as np
 from tqdm import trange
 from utils import get_logger
 import gensim
-import spacy
 
 logger = get_logger("refine_embeddings", True)
 
+# Reference:
 # https://aclanthology.org/D17-1056.pdf
 # https://github.com/wangjin0818/word_embedding_refine/blob/master/embedding_refine.py
 
@@ -217,14 +226,13 @@ def most_similar(word, w2v_model, weight_dict, top=10):
 
 
 if __name__ == '__main__':
-    # cooker = EmbeddingsCooker(
-    #     w2v_model_path='./w2v.wv',
-    #     lexicon_path='../lexicon/ANEW2017/ANEW2017All.txt'
-    # )
+    cooker = EmbeddingsCooker(
+        w2v_model_path='./w2v.wv',
+        lexicon_path='../lexicon/ANEW2017/ANEW2017All.txt'
+    )
     # cooker = EmbeddingsCooker(
     #     w2v_model_path='./w2v.wv',
     #     lexicon_path='../lexicon/NRC-VAD-Lexicon-Aug2018Release/NRC-VAD-Lexicon.txt'
     # )
-    # cooker.load_lexicon()
-    # cooker.refine_embeddings()
-    pass
+    cooker.load_lexicon()
+    cooker.refine_embeddings()

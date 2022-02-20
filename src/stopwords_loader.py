@@ -1,4 +1,3 @@
-# Load the name of the cities, states, and counties in the United States
 import calendar
 import inflect
 import re
@@ -91,8 +90,3 @@ class StopwordsLoader:
             return re.compile(r'\b(' + r'|'.join(_words) + r')\b\s?')
         else:
             return _words
-
-
-if __name__ == '__main__':
-    _test = load_calendar_words()
-    pass
