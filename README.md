@@ -2,10 +2,10 @@
 This project extends the research from Gennaro and Ash 
 ([GitHub](https://github.com/elliottash/emotionmeter)) 
 for analyzing the emotion of political tweets by representing the emotionality in valence, arousal, and dominance.
+Please refer to [GitHub repo](https://github.com/codingFerryman/circumplex_emotionmeter) for any pdates.
 
 This repository is an individual project
-in the course [Building a Robot Judge: Data Science for Decision-Making](http://www.vvz.ethz.ch/lerneinheitPre.do?semkez=2021W&lerneinheitId=146397&lang=en),
-please refer to [GitHub repo](https://github.com/codingFerryman/circumplex_emotionmeter) for any pdates.
+in the course [Building a Robot Judge: Data Science for Decision-Making](http://www.vvz.ethz.ch/lerneinheitPre.do?semkez=2021W&lerneinheitId=146397&lang=en).
 
 
 ## Setup
@@ -30,7 +30,7 @@ bash ./main.py
 ```
 If the data contains non-English texts but the lexicon only has English words, 
 it is recommended to translate them to English first.
-You can also try Microsoft Translator API and pass your secret key here. Please refer to the code and 
+You can also try Microsoft Translator API and pass your secret key here. Please refer to the [code](https://github.com/codingFerryman/circumplex_emotionmeter/blob/master/src/main.py#L55) and 
 [Microsoft Azure Cognitive Service](https://www.microsoft.com/en-us/translator/business/translator-api/)
 for more details. 
 
