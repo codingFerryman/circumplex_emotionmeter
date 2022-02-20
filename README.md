@@ -14,7 +14,7 @@ After cloning this repository, create or activate a virtual environment, then ex
 cd PATH-TO-REPO-DIR
 bash ./setup_env.sh
 ```
-The NRC-VAD lexicon will be downloaded automatically, but you may also want to [request ANEW lexicon](https://csea.phhp.ufl.edu/media/anewmessage.html) by yourself.
+The NRC-VAD lexicon will be downloaded automatically, but you may also want to use ANEW lexicon [(send request)](https://csea.phhp.ufl.edu/media/anewmessage.html).
 
 ## Execution
 Prepare the data for analysis (Internet access is required, may need ~1.5 hours) by executing [preprocessing.py](src/preprocessing.py):
