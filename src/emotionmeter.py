@@ -1,9 +1,11 @@
+import pickle
+
 import pandas as pd
 import spacy
 from pathlib import Path
 from typing import Optional, Union, Dict, List
 
-from preprocessing import CircumplexEmotionMeterPreprocessor, EmotionText
+from preprocessing import EmotionText, execute_preprocessor
 from utils import get_logger, apply_calculation_rows
 
 logger = get_logger("circumplex_emotionmeter", True)
@@ -36,9 +38,16 @@ class CircumplexEmotionMeter:
         self.affect_path = affect_path
 
         self._load_cognition_and_cognition_word_lists()
-        self.nlp = spacy.load(corpus)
-        self.nlp_cognition = self.nlp(' '.join(self.cog))
-        self.nlp_affect = self.nlp(' '.join(self.aff))
+        self.spacy_corpus = corpus
+        try:
+            self.nlp = spacy.load(self.spacy_corpus)
+            self.nlp_cognition = self.nlp(' '.join(self.cog))
+            self.nlp_affect = self.nlp(' '.join(self.aff))
+            self.preprocessed_flag = True
+        except OSError:
+            logger.warn("Cannot find the pretrained vectors, will try to train them in load_tokens()")
+            self.preprocessed_flag = False
+
         self.nlp_vad_dict = {}
 
         self.data_path_or_df = data_path_or_df
@@ -79,24 +88,28 @@ class CircumplexEmotionMeter:
         if type(self.data_path_or_df) is pd.DataFrame:
             self.data_df = self.data_path_or_df
         else:
-            self.data_df = pd.read_pickle(self.data_path_or_df)
+            try:
+                self.data_df = pd.read_pickle(self.data_path_or_df)
+            except pickle.UnpicklingError:
+                self.preprocessed_flag = False
 
         if text_column is None:
             text_column = self.text_column
         assert (text_column in self.data_df.columns), f"df must have column {text_column}"
 
-        if text_column != 'tokens':
-            save_path = kwargs.get('save_path', './tokens.pkl')
-            preproc = CircumplexEmotionMeterPreprocessor(
-                data_path_or_df=self.data_df,
-                text_column=text_column,
+        if not self.preprocessed_flag:
+            token_path = kwargs.get('token_path', './cache/tokens.pkl')
+            w2v_path = kwargs.get('w2v_path', './cache/w2v.kv')
+            execute_preprocessor(
+                token_path=token_path,
+                w2v_path=w2v_path,
+                spacy_save_path=self.spacy_corpus,
                 **kwargs
             )
-            preproc.load_stopwords()
-            preproc.load_tokenizer()
-            preproc.load_data()
-            preproc.preprocess()
-            preproc.save_tokens(save_path)
+            self.nlp = spacy.load(self.spacy_corpus)
+            self.nlp_cognition = self.nlp(' '.join(self.cog))
+            self.nlp_affect = self.nlp(' '.join(self.aff))
+            self.data_df = pd.read_pickle(token_path)
 
         logger.info('Tokens loaded')
 

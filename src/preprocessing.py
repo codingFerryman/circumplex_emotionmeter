@@ -255,6 +255,7 @@ def execute_preprocessor(
         gensim_vector_path=w2v_path,
         save_dir=spacy_save_path
     )
+    return proc
 
 
 if __name__ == '__main__':
