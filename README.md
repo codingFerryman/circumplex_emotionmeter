@@ -30,7 +30,7 @@ bash ./main.py
 ```
 If the data contains non-English texts but the lexicon only has English words, 
 it is recommended to translate them to English first.
-You can also try Microsoft Translator API and pass your secret key here. Please refer to the [code](https://github.com/codingFerryman/circumplex_emotionmeter/blob/master/src/main.py#L55) and 
+You can also try Microsoft Translator API and pass your secret key [here](https://github.com/codingFerryman/circumplex_emotionmeter/blob/master/src/main.py#L55). Please refer to the code  and 
 [Microsoft Azure Cognitive Service](https://www.microsoft.com/en-us/translator/business/translator-api/)
 for more details. 
 
